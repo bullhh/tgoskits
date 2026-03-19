@@ -1,0 +1,34 @@
+name: Build & Test VM
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test_os_target:
+    name: Test Axvisor x86_64
+    runs-on: 
+      - self-hosted
+      - linux
+      - intel
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - run: rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+          cache-targets: false
+
+      - name: Run AxVisor tests
+        run: cargo xtask test axvisor --target x86_64
