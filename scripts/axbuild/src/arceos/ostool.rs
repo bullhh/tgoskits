@@ -318,7 +318,14 @@ fn build_features(
         AxFeaturePrefixFamily::AxStd => "axstd/",
         AxFeaturePrefixFamily::AxFeat => "axfeat/",
     };
-    let lib_prefix = if use_axlibc { "axlibc/" } else { "axstd/" };
+    let lib_prefix = if use_axlibc {
+        "axlibc/"
+    } else {
+        match ax_feature_family {
+            AxFeaturePrefixFamily::AxStd => "axstd/",
+            AxFeaturePrefixFamily::AxFeat => "axfeat/",
+        }
+    };
 
     let mut features =
         Vec::with_capacity(ax_features.len() + lib_features.len() + app_features.len());

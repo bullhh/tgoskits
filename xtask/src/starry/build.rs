@@ -62,12 +62,15 @@ impl BuildArgs {
         if matches!(self.smp, Some(0)) {
             bail!("invalid SMP value `0`: SMP must be >= 1");
         }
+        let platform = self
+            .platform
+            .clone()
+            .or_else(|| Some(PlatformResolver::resolve_default_platform_name(&arch)));
+        let app_features = resolve_starry_app_features(&platform);
 
         Ok(ArceosConfigOverride {
             arch: Some(arch),
-            platform: self
-                .platform
-                .or_else(|| Some(PlatformResolver::resolve_default_platform_name(&arch))),
+            platform,
             mode: self.release.then_some(BuildMode::Release),
             plat_dyn: Some(self.plat_dyn),
             smp: self.smp,
@@ -77,7 +80,7 @@ impl BuildArgs {
                 .map(FeatureResolver::parse_features)
                 .map(Some)
                 .unwrap_or(None),
-            app_features: Some(vec!["qemu".to_string()]),
+            app_features,
             ..Default::default()
         })
     }
@@ -107,5 +110,14 @@ fn parse_starry_arch(arch: Option<&str>) -> Result<Arch> {
     match arch {
         Some(value) => Arch::from_str(value).context("failed to parse arch override"),
         None => Ok(Arch::RiscV64),
+    }
+}
+
+fn resolve_starry_app_features(platform: &Option<String>) -> Option<Vec<String>> {
+    match platform.as_deref() {
+        Some("axplat-aarch64-phytium-pi") | Some("aarch64-phytium-pi") => {
+            Some(vec!["phytium-pi".to_string()])
+        }
+        _ => Some(vec!["qemu".to_string()]),
     }
 }

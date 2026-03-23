@@ -6855,6 +6855,7 @@ name = "starryos"
 version = "0.3.0-preview.3"
 dependencies = [
  "axfeat",
+ "axplat-aarch64-phytium-pi",
  "axplat-riscv64-visionfive2",
  "starry-kernel",
 ]

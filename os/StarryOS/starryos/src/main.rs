@@ -22,3 +22,6 @@ fn main() {
 
 #[cfg(feature = "vf2")]
 extern crate axplat_riscv64_visionfive2;
+
+#[cfg(feature = "phytium-pi")]
+extern crate axplat_aarch64_phytium_pi;

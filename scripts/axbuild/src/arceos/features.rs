@@ -14,7 +14,10 @@
 
 use std::collections::HashSet;
 
-use crate::arceos::config::{ArceosConfig, LogLevel};
+use crate::arceos::{
+    PlatformResolver,
+    config::{ArceosConfig, LogLevel},
+};
 
 /// Feature resolver
 pub struct FeatureResolver;
@@ -93,10 +96,14 @@ impl FeatureResolver {
         // Platform-related features
         if plat_dyn {
             features.push("plat-dyn".to_string());
-        } else if config.platform.starts_with("myplat") {
-            features.push("myplat".to_string());
         } else {
-            features.push("defplat".to_string());
+            let default_platform = PlatformResolver::resolve_default_platform(&config.arch);
+            let default_platform_name = PlatformResolver::resolve_default_platform_name(&config.arch);
+            if config.platform == default_platform || config.platform == default_platform_name {
+                features.push("defplat".to_string());
+            } else {
+                features.push("myplat".to_string());
+            }
         }
 
         // User-specified features (non-lib features)

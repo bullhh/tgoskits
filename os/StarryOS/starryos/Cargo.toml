@@ -29,18 +29,32 @@ qemu = [
     "axfeat/fs-ng-times",
     "starry-kernel/dev-log",
 ]
-smp = ["axfeat/smp", "axplat-riscv64-visionfive2?/smp"]
+phytium-pi = [
+    "dep:axplat-aarch64-phytium-pi",
+    "axfeat/myplat",
+    "axfeat/bus-pci",
+    "axfeat/driver-fxmac",
+    "axfeat/fs-ng-times",
+    "starry-kernel/dev-log",
+]
+smp = [
+    "axfeat/smp",
+    "axplat-aarch64-phytium-pi?/smp",
+    "axplat-riscv64-visionfive2?/smp",
+]
 
 vf2 = ["dep:axplat-riscv64-visionfive2", "axfeat/driver-sdmmc"]
 
 [[bin]]
 name = "starryos"
 path = "src/main.rs"
-required-features = ["qemu"]
 
 [dependencies]
 axfeat.workspace = true
 starry-kernel.workspace = true
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+axplat-aarch64-phytium-pi = { path = "../../../components/axplat_crates/platforms/axplat-aarch64-phytium-pi", features = ["fp-simd", "irq", "smp"], optional = true }
 
 [dependencies.axplat-riscv64-visionfive2]
 version = "0.1.0-pre.1"

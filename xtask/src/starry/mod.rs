@@ -57,6 +57,8 @@ pub enum StarryCommand {
         #[arg(long)]
         arch: Option<String>,
     },
+    /// List available platforms for StarryOS
+    ListPlatforms,
 }
 
 impl StarryCommand {
@@ -66,8 +68,114 @@ impl StarryCommand {
             StarryCommand::Run { args } => run_with_arg(args).await,
             StarryCommand::Rootfs { arch } => run_rootfs_command(arch),
             StarryCommand::Img { arch } => run_img_command(arch),
+            StarryCommand::ListPlatforms => run_list_platforms(),
         }
     }
+}
+
+/// Available platform information
+struct PlatformInfo {
+    name: &'static str,
+    package: &'static str,
+    arch: &'static str,
+    description: &'static str,
+    available: bool,  // Whether the platform is already in StarryOS dependencies
+}
+
+/// List of all known platforms
+const ALL_PLATFORMS: &[PlatformInfo] = &[
+    // QEMU platforms (available by default via defplat feature)
+    PlatformInfo {
+        name: "riscv64-qemu-virt",
+        package: "axplat-riscv64-qemu-virt",
+        arch: "riscv64",
+        description: "QEMU RISC-V 64-bit virt machine (default for riscv64)",
+        available: true,
+    },
+    PlatformInfo {
+        name: "aarch64-qemu-virt",
+        package: "axplat-aarch64-qemu-virt",
+        arch: "aarch64",
+        description: "QEMU AArch64 virt machine (default for aarch64)",
+        available: true,
+    },
+    PlatformInfo {
+        name: "loongarch64-qemu-virt",
+        package: "axplat-loongarch64-qemu-virt",
+        arch: "loongarch64",
+        description: "QEMU LoongArch64 virt machine (default for loongarch64)",
+        available: true,
+    },
+    PlatformInfo {
+        name: "x86-pc",
+        package: "axplat-x86-pc",
+        arch: "x86_64",
+        description: "x86 PC (QEMU q35 machine, default for x86_64)",
+        available: true,
+    },
+    // Physical boards (need to be added via cargo axplat add)
+    PlatformInfo {
+        name: "aarch64-raspi4",
+        package: "axplat-aarch64-raspi",
+        arch: "aarch64",
+        description: "Raspberry Pi 4B",
+        available: false,
+    },
+    PlatformInfo {
+        name: "aarch64-phytium-pi",
+        package: "axplat-aarch64-phytium-pi",
+        arch: "aarch64",
+        description: "Phytium Pi (飞腾派)",
+        available: false,
+    },
+    PlatformInfo {
+        name: "aarch64-bsta1000b",
+        package: "axplat-aarch64-bsta1000b",
+        arch: "aarch64",
+        description: "BST A1000B (百度 Apollo 开发板)",
+        available: false,
+    },
+    PlatformInfo {
+        name: "riscv64-visionfive2",
+        package: "axplat-riscv64-visionfive2",
+        arch: "riscv64",
+        description: "VisionFive 2 (enable with --features vf2)",
+        available: true,  // Available via vf2 feature
+    },
+];
+
+fn run_list_platforms() -> Result<()> {
+    println!("Available platforms for StarryOS:\n");
+    
+    println!("QEMU Virtual Platforms (available by default):");
+    println!("{}", "-".repeat(80));
+    println!("{:<25} {:<10} {}", "Platform", "Arch", "Description");
+    println!("{}", "-".repeat(80));
+    for plat in ALL_PLATFORMS.iter().filter(|p| p.available && p.package.contains("qemu")) {
+        println!("{:<25} {:<10} {}", plat.name, plat.arch, plat.description);
+    }
+    
+    println!("\nPhysical Boards (available by default):");
+    println!("{}", "-".repeat(80));
+    println!("{:<25} {:<10} {:<10} {}", "Platform", "Arch", "Status", "Description");
+    println!("{}", "-".repeat(80));
+    for plat in ALL_PLATFORMS.iter().filter(|p| !p.package.contains("qemu")) {
+        let status = if plat.available { "✓ Ready" } else { "Need add" };
+        println!("{:<25} {:<10} {:<10} {}", plat.name, plat.arch, status, plat.description);
+    }
+    
+    println!("\nHow to add a platform that is not yet available:");
+    println!("{}", "-".repeat(80));
+    println!("  cd os/StarryOS/starryos");
+    println!("  cargo axplat add <platform-package>");
+    println!("");
+    println!("Example:");
+    println!("  cargo axplat add axplat-aarch64-phytium-pi");
+    println!("");
+    println!("After adding, you can build with:");
+    println!("  cargo xtask starry build --arch aarch64 --platform axplat-aarch64-phytium-pi");
+    
+    Ok(())
 }
 
 fn run_rootfs_command(arch: Option<String>) -> Result<()> {
