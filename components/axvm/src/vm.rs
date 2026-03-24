@@ -154,7 +154,7 @@ impl AxVM {
     pub fn new(config: AxVMConfig) -> AxResult<AxVMRef> {
         let address_space =
             // TODO: read level from config
-            AddrSpace::new_empty(4, GuestPhysAddr::from(VM_ASPACE_BASE), VM_ASPACE_SIZE)?;
+            AddrSpace::new_empty(crate::vcpu::max_guest_page_table_levels(), GuestPhysAddr::from(VM_ASPACE_BASE), VM_ASPACE_SIZE)?;
 
         let result = Arc::new(Self {
             id: config.id(),

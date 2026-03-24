@@ -14,7 +14,7 @@
 
 use aarch64_cpu::registers::{ESR_EL2, HCR_EL2, Readable, SCTLR_EL1, VTCR_EL2, VTTBR_EL2};
 use axaddrspace::{
-    GuestPhysAddr,
+    GuestPhysAddr, MappingFlags,
     device::{AccessWidth, SysRegAddr},
 };
 use axerrno::{AxError, AxResult};
@@ -28,7 +28,7 @@ use crate::{
         exception_data_abort_access_reg, exception_data_abort_access_reg_width,
         exception_data_abort_access_width, exception_data_abort_handleable,
         exception_data_abort_is_permission_fault, exception_data_abort_is_translate_fault,
-        exception_esr, exception_fault_addr, exception_next_instruction_step,
+        exception_esr, exception_fault_addr, exception_iss, exception_next_instruction_step,
         exception_sysreg_addr, exception_sysreg_direction_write, exception_sysreg_gpr,
     },
 };
@@ -117,6 +117,7 @@ pub fn handle_exception_sync(ctx: &mut TrapFrame) -> AxResult<AxVCpuExitReason> 
                 ],
             })
         }
+        Some(ESR_EL2::EC::Value::InstrAbortLowerEL) => handle_instruction_abort(ctx),
         Some(ESR_EL2::EC::Value::TrappedMsrMrs) => handle_system_register(ctx),
         Some(ESR_EL2::EC::Value::SMC64) => {
             let elr = ctx.exception_pc();
@@ -139,6 +140,53 @@ pub fn handle_exception_sync(ctx: &mut TrapFrame) -> AxResult<AxVCpuExitReason> 
                 ctx
             );
         }
+    }
+}
+
+/// Handles instruction abort exceptions from a lower exception level (guest VM).
+///
+/// Instruction aborts occur when the guest VM attempts to execute code from
+/// an unmapped or inaccessible memory region. Translation faults are reported
+/// as `NestedPageFault` with execute access flags, allowing the hypervisor to
+/// map the faulting page. Permission faults return an `Unsupported` error.
+///
+/// # Arguments
+///
+/// * `ctx` - A mutable reference to the `TrapFrame` containing the saved guest CPU state.
+///
+/// # Returns
+///
+/// An `AxResult<AxVCpuExitReason>` indicating the reason for the VM exit.
+fn handle_instruction_abort(ctx: &mut TrapFrame) -> AxResult<AxVCpuExitReason> {
+    let addr = exception_fault_addr()?;
+    let ifsc = exception_iss() & 0b111111;
+
+    trace!(
+        "Instruction abort @{:?}, ELR {:#x}, esr: {:#x}, IFSC: {:#x}",
+        addr,
+        ctx.exception_pc(),
+        exception_esr(),
+        ifsc,
+    );
+
+    let fault_type = ifsc & (0xf << 2);
+    if fault_type == 4 {
+        // Translation fault: report as nested page fault with execute access.
+        Ok(AxVCpuExitReason::NestedPageFault {
+            addr,
+            access_flags: MappingFlags::EXECUTE,
+        })
+    } else if fault_type == 12 {
+        // Permission fault
+        Err(AxError::Unsupported)
+    } else {
+        panic!(
+            "Unhandled instruction abort IFSC {:#x} @{:?}, ELR {:#x}, ESR {:#x}",
+            ifsc,
+            addr,
+            ctx.exception_pc(),
+            exception_esr(),
+        );
     }
 }
 
