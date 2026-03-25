@@ -20,7 +20,10 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use axbuild::Arch;
+use axbuild::{
+    Arch,
+    arceos::LogLevel,
+};
 use serde_json::Value;
 
 const ROOTFS_URL: &str = "https://github.com/Starry-OS/rootfs/releases/download/20260214";
@@ -31,6 +34,19 @@ pub fn parse_starry_arch(arch: Option<&str>) -> Result<Arch> {
     match arch {
         Some(value) => Arch::from_str(value).context("failed to parse arch override"),
         None => Ok(Arch::RiscV64),
+    }
+}
+
+pub fn parse_starry_log_level(log: Option<&str>) -> Result<Option<LogLevel>> {
+    match log {
+        Some("off") => Ok(Some(LogLevel::Off)),
+        Some("error") => Ok(Some(LogLevel::Error)),
+        Some("warn") => Ok(Some(LogLevel::Warn)),
+        Some("info") => Ok(Some(LogLevel::Info)),
+        Some("debug") => Ok(Some(LogLevel::Debug)),
+        Some("trace") => Ok(Some(LogLevel::Trace)),
+        Some(other) => bail!("failed to parse log override `{other}`"),
+        None => Ok(None),
     }
 }
 

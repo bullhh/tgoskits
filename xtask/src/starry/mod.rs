@@ -95,6 +95,7 @@ pub async fn run_test(target: &str) -> Result<()> {
             platform: None,
             release: true,
             features: None,
+            log: None,
             smp: None,
             plat_dyn: false,
         },

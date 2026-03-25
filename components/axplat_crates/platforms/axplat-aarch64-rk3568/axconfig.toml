@@ -1,0 +1,36 @@
+# Architecture identifier.
+arch = "aarch64"                                # str
+# Platform identifier.
+platform = "aarch64-rk3568"                     # str
+# Platform package.
+package = "axplat-aarch64-rk3568"               # str
+
+[plat]
+max-cpu-num = 4                                 # uint
+phys-memory-base = 0x0                          # uint
+phys-memory-size = 0x1_0000_0000                # uint
+kernel-base-paddr = 0x9000_0000                 # uint
+kernel-base-vaddr = "0xffff_0000_9000_0000"     # uint
+phys-virt-offset = "0xffff_0000_0000_0000"      # uint
+phys-bus-offset = 0                             # uint
+kernel-aspace-base = "0xffff_0000_0000_0000"    # uint
+kernel-aspace-size = "0x0000_ffff_ffff_f000"    # uint
+boot-stack-size = 0x40000                       # uint
+
+psci-method = "smc"                             # str
+cpu-id-list = [0x0, 0x100, 0x200, 0x300]        # [uint]
+
+[devices]
+mmio-ranges = [
+    [0xfd00_0000, 0x0300_0000],  # RK3568 peripheral MMIO window
+]                                # [(uint, uint)]
+virtio-mmio-ranges = []          # [(uint, uint)]
+pci-ecam-base = 0                # uint
+pci-bus-end = 0                  # uint
+pci-ranges = []                  # [(uint, uint)]
+uart-paddr = 0xfe66_0000         # uint
+uart-irq = 0x76                  # uint
+timer-irq = 30                   # uint
+ipi-irq = 1                      # uint
+gicc-paddr = 0xfd46_0000         # uint
+gicd-paddr = 0xfd40_0000         # uint

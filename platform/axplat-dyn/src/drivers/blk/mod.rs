@@ -7,6 +7,8 @@ use spin::Mutex;
 use super::DmaImpl;
 
 mod virtio;
+#[cfg(target_arch = "aarch64")]
+mod rockchip;
 
 pub struct Block {
     dev: Device<rd_block::Block>,

@@ -1245,6 +1245,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "axplat-aarch64-rk3568"
+version = "0.3.1-pre.6"
+dependencies = [
+ "axconfig-macros",
+ "axcpu",
+ "axplat",
+ "axplat-aarch64-peripherals",
+ "dw_apb_uart",
+ "kspin",
+ "log",
+ "page_table_entry",
+]
+
+[[package]]
 name = "axplat-dyn"
 version = "0.3.0-preview.3"
 dependencies = [
@@ -1265,7 +1279,10 @@ dependencies = [
  "memory_addr",
  "percpu",
  "rd-block",
+ "rdif-clk",
  "rdrive",
+ "rk3568_clk",
+ "sdmmc",
  "somehal",
  "spin 0.10.0",
 ]
@@ -6869,6 +6886,7 @@ name = "starryos"
 version = "0.3.0-preview.3"
 dependencies = [
  "axfeat",
+ "axplat-aarch64-rk3568",
  "axplat-riscv64-visionfive2",
  "starry-kernel",
 ]

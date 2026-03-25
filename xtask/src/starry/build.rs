@@ -21,6 +21,8 @@ use axbuild::{
 };
 use clap::Args;
 
+use super::config::parse_starry_log_level;
+
 pub const STARRY_PACKAGE: &str = "starryos";
 pub const STARRY_TEST_PACKAGE: &str = "starryos-test";
 
@@ -47,12 +49,16 @@ pub struct BuildArgs {
     #[arg(long)]
     pub features: Option<String>,
 
+    /// Log level: off, error, warn, info, debug, trace
+    #[arg(long)]
+    pub log: Option<String>,
+
     /// Number of CPUs (must be >= 1)
     #[arg(long)]
     pub smp: Option<usize>,
 
     /// Enable dynamic platform (plat-dyn)
-    #[arg(long, action = clap::ArgAction::Set, default_value_t = false)]
+    #[arg(long, action = clap::ArgAction::SetTrue)]
     pub plat_dyn: bool,
 }
 
@@ -62,14 +68,29 @@ impl BuildArgs {
         if matches!(self.smp, Some(0)) {
             bail!("invalid SMP value `0`: SMP must be >= 1");
         }
+        let log = parse_starry_log_level(self.log.as_deref())?;
+
+        let platform = self
+            .platform
+            .or_else(|| Some(PlatformResolver::resolve_default_platform_name(&arch)));
+
+        let mut app_features = Vec::new();
+        if platform
+            .as_deref()
+            .is_some_and(|platform| platform.contains("qemu"))
+        {
+            app_features.push("qemu".to_string());
+        }
+        if self.smp.unwrap_or(1) > 1 {
+            app_features.push("smp".to_string());
+        }
 
         Ok(ArceosConfigOverride {
             arch: Some(arch),
-            platform: self
-                .platform
-                .or_else(|| Some(PlatformResolver::resolve_default_platform_name(&arch))),
+            platform,
             mode: self.release.then_some(BuildMode::Release),
             plat_dyn: Some(self.plat_dyn),
+            log,
             smp: self.smp,
             features: self
                 .features
@@ -77,7 +98,7 @@ impl BuildArgs {
                 .map(FeatureResolver::parse_features)
                 .map(Some)
                 .unwrap_or(None),
-            app_features: Some(vec!["qemu".to_string()]),
+            app_features: Some(app_features),
             ..Default::default()
         })
     }

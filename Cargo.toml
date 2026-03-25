@@ -172,6 +172,7 @@ axplat-aarch64-bsta1000b = { path = "components/axplat_crates/platforms/axplat-a
 axplat-aarch64-peripherals = { path = "components/axplat_crates/platforms/axplat-aarch64-peripherals" }
 axplat-aarch64-phytium-pi = { path = "components/axplat_crates/platforms/axplat-aarch64-phytium-pi" }
 axplat-aarch64-qemu-virt = { path = "components/axplat_crates/platforms/axplat-aarch64-qemu-virt" }
+axplat-aarch64-rk3568 = { path = "components/axplat_crates/platforms/axplat-aarch64-rk3568" }
 axplat-aarch64-raspi = { path = "components/axplat_crates/platforms/axplat-aarch64-raspi" }
 axplat-loongarch64-qemu-virt = { path = "components/axplat_crates/platforms/axplat-loongarch64-qemu-virt" }
 axplat-riscv64-qemu-virt = { path = "components/axplat_crates/platforms/axplat-riscv64-qemu-virt" }

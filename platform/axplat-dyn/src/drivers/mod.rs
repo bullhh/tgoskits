@@ -15,6 +15,8 @@ use rdrive::probe::OnProbeError;
 use spin::Mutex;
 
 mod pci;
+#[cfg(target_arch = "aarch64")]
+mod soc;
 
 pub mod blk;
 
