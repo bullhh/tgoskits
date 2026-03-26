@@ -23,6 +23,7 @@ handler_table = { version = "0.1.2", optional = true }
 const-str = "1.0"
 axplat-macros = { workspace = true }
 kspin = "0.1"
+log = "0.4"
 percpu.workspace = true
 
 [package.metadata.docs.rs]

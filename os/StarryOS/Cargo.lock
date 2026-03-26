@@ -763,6 +763,7 @@ dependencies = [
  "const-str",
  "crate_interface 0.3.0",
  "kspin",
+ "log",
  "memory_addr",
  "percpu",
 ]

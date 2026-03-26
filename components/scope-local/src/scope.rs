@@ -99,8 +99,20 @@ impl ActiveScope {
 
     pub(crate) fn get<'a>(item: &'static Item) -> &'a ItemBox {
         let ptr = ACTIVE_SCOPE_PTR.read_current();
-        let ptr = NonNull::new(ptr as _).unwrap_or(GLOBAL_SCOPE.ptr);
         let index = item.index();
+        
+        // === 调试信息 ===
+        if ptr == 0 {
+            // 使用全局 scope，这是正常的
+        } else if ptr < 0xFFFF_0000_0000_0000 {
+            // 指针看起来不像是内核地址，可能有问题
+            log::warn!(
+                "scope_local: ACTIVE_SCOPE_PTR has suspicious value {:#x}, index={}, using GLOBAL_SCOPE",
+                ptr, index
+            );
+        }
+        
+        let ptr = NonNull::new(ptr as _).unwrap_or(GLOBAL_SCOPE.ptr);
         unsafe { ptr.add(index).as_ref() }
     }
 }

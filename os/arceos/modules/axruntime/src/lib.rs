@@ -125,8 +125,17 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     unsafe {
         axhal::mem::clear_bss()
     };
+    
+    // === 调试信息（使用 ax_println!，因为日志还没初始化）===
+    // ax_println!("[DEBUG] axruntime: rust_main start, cpu_id={}, arg={:#x}", cpu_id, arg);
+    // ax_println!("[DEBUG] axruntime: calling axhal::percpu::init_primary...");
+    
     axhal::percpu::init_primary(cpu_id);
+    
+    // ax_println!("[DEBUG] axruntime: percpu init done, calling axhal::init_early...");
     axhal::init_early(cpu_id, arg);
+    
+    // ax_println!("[DEBUG] axruntime: init_early complete");
     let log_level = option_env!("AX_LOG").unwrap_or("info");
 
     ax_println!("{}", LOGO);
@@ -213,7 +222,15 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     axhal::init_later(cpu_id, arg);
 
     #[cfg(feature = "multitask")]
-    axtask::init_scheduler();
+    {
+        info!("axruntime: initializing scheduler (multitask)...");
+        axtask::init_scheduler();
+        info!("axruntime: scheduler initialized");
+    }
+    #[cfg(not(feature = "multitask"))]
+    {
+        info!("axruntime: multitask feature NOT enabled");
+    }
 
     #[cfg(feature = "axdriver")]
     {
@@ -271,6 +288,7 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
         core::hint::spin_loop();
     }
 
+    info!("axruntime: all CPUs initialized, calling main()...");
     unsafe { main() };
 
     #[cfg(feature = "multitask")]

@@ -2,7 +2,31 @@ use axplat::init::InitIf;
 
 use crate::console;
 
-struct InitIfImpl;
+// 公开以确保链接
+pub struct InitIfImpl;
+
+/// 读取 TPIDR_EL1 寄存器 (AArch64 percpu 基址，percpu crate 使用 EL1)
+#[cfg(target_arch = "aarch64")]
+fn read_tpidr_el1() -> usize {
+    let val: usize;
+    unsafe {
+        core::arch::asm!("mrs {}, tpidr_el1", out(reg) val);
+    }
+    val
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+fn read_tpidr_el1() -> usize {
+    0
+}
+
+/// 写入 TPIDR_EL1 寄存器
+#[cfg(target_arch = "aarch64")]
+unsafe fn write_tpidr_el1(val: usize) {
+    unsafe {
+        core::arch::asm!("msr tpidr_el1, {}", in(reg) val);
+    }
+}
 
 #[impl_plat_interface]
 impl InitIf for InitIfImpl {

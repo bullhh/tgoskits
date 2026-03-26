@@ -87,12 +87,12 @@ impl FilesystemOps for Ext4Filesystem {
 }
 
 fn log_ext4_probe_info(dev: &mut AxBlockDevice) {
-    info!(
-        "probing ext4 on block device {:?}: blocks={}, block_size={}",
-        dev.device_name(),
-        dev.num_blocks(),
-        dev.block_size()
-    );
+    // info!(
+    //     "probing ext4 on block device {:?}: blocks={}, block_size={}",
+    //     dev.device_name(),
+    //     dev.num_blocks(),
+    //     dev.block_size()
+    // );
 
     let mut block0 = [0u8; 4096];
     if let Err(err) = dev.read_block(0, &mut block0) {

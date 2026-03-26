@@ -1173,6 +1173,7 @@ dependencies = [
  "crate_interface",
  "handler_table 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "kspin",
+ "log",
  "memory_addr",
  "percpu",
 ]
@@ -4998,6 +4999,7 @@ version = "0.2.3-preview.1"
 dependencies = [
  "cfg-if",
  "kernel_guard",
+ "log",
  "percpu_macros",
  "spin 0.10.0",
  "x86",
@@ -6273,6 +6275,7 @@ name = "scope-local"
 version = "0.1.2"
 dependencies = [
  "ctor 0.6.3",
+ "log",
  "percpu",
  "spin 0.10.0",
 ]
