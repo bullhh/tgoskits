@@ -122,7 +122,6 @@ fn is_init_ok() -> bool {
 /// secondary cores call [`rust_main_secondary`].
 #[cfg_attr(not(test), axplat::main)]
 pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
-    #[cfg(not(feature = "plat-dyn"))]
     unsafe {
         axhal::mem::clear_bss()
     };

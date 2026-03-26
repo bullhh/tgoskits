@@ -16,6 +16,8 @@ pub mod ramdisk_static;
 pub mod ahci;
 #[cfg(feature = "sdmmc")]
 pub mod sdmmc;
+#[cfg(feature = "gpt")]
+pub mod gpt;
 
 #[doc(no_inline)]
 pub use axdriver_base::{BaseDriverOps, DevError, DevResult, DeviceType};

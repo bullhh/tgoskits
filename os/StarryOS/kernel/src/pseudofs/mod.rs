@@ -68,6 +68,7 @@ pub fn mount_all() -> LinuxResult<()> {
     mount_at(&fs, "/proc", proc::new_procfs())?;
 
     mount_at(&fs, "/sys", tmp::MemoryFs::new())?;
+    
     let mut path = PathBuf::new();
     for comp in Path::new("/sys/class/graphics/fb0/device").components() {
         path.push(comp.as_str());
