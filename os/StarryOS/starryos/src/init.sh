@@ -12,4 +12,5 @@ echo
 # Do your initialization here!
 
 cd "$HOME" || cd /
-exec /bin/sh
+export PS1='${PWD} # '
+exec /bin/sh -i
