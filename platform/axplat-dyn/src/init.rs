@@ -38,6 +38,11 @@ impl InitIf for InitIfImpl {
     fn init_early(_cpu_id: usize, _dtb: usize) {
         console::setup_early();
         axcpu::init::init_trap();
+        #[cfg(all(target_arch = "aarch64", feature = "fp-simd"))]
+        {
+            axcpu::asm::enable_fp();
+            debug!("axplat-dyn: fp/simd enabled");
+        }
         somehal::timer::enable();
         debug!("axplat-dyn: init_early complete");
     }
@@ -46,6 +51,11 @@ impl InitIf for InitIfImpl {
     #[cfg(feature = "smp")]
     fn init_early_secondary(_cpu_id: usize) {
         axcpu::init::init_trap();
+        #[cfg(all(target_arch = "aarch64", feature = "fp-simd"))]
+        {
+            axcpu::asm::enable_fp();
+            debug!("axplat-dyn: secondary fp/simd enabled");
+        }
         somehal::timer::enable();
         debug!("axplat-dyn: init_early_secondary complete");
     }

@@ -5,10 +5,9 @@ use core::{
 
 mod tp;
 
-pub use tp::*;
-
 #[cfg(feature = "preempt")]
 use kernel_guard::NoPreempt;
+pub use tp::*;
 
 #[repr(transparent)]
 pub struct PerCpuData<T> {
@@ -221,10 +220,6 @@ pub fn init() -> usize {
 pub fn init_percpu_reg(cpu_idx: usize) {
     unsafe {
         let ptr = _percpu_base_ptr(cpu_idx);
-        log::info!(
-            "percpu: init_percpu_reg(cpu_idx={}) base_ptr={:#x}",
-            cpu_idx, ptr as usize
-        );
         write_percpu_reg(ptr as usize);
     }
 }

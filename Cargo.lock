@@ -1256,6 +1256,7 @@ dependencies = [
  "axplat-aarch64-peripherals",
  "dw_apb_uart",
  "kspin",
+ "lazyinit 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "page_table_entry",
 ]

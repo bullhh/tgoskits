@@ -13,6 +13,7 @@ repository.workspace = true
 default = ["smp", "irq"]
 smp = ["axplat/smp"]
 irq = ["axplat/irq"]
+fp-simd = ["axcpu/fp-simd"]
 uspace = ["somehal/uspace"]
 hv = ["somehal/hv", "axcpu/arm-el2"]
 

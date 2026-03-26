@@ -1,16 +1,23 @@
-use axplat::console::ConsoleIf;
-use axplat::mem::{PhysAddr, pa};
+use axplat::{
+    console::ConsoleIf,
+    mem::{PhysAddr, pa},
+};
 use dw_apb_uart::DW8250;
 use kspin::SpinNoIrq;
+use lazyinit::LazyInit;
 
 use crate::mem::phys_to_virt;
 
 const UART_BASE: PhysAddr = pa!(crate::config::devices::UART_PADDR);
 
-static UART: SpinNoIrq<DW8250> = SpinNoIrq::new(DW8250::new(phys_to_virt(UART_BASE).as_usize()));
+static UART: LazyInit<SpinNoIrq<DW8250>> = LazyInit::new();
 
 pub fn init_early() {
-    UART.lock().init();
+    UART.init_once({
+        let mut uart = DW8250::new(phys_to_virt(UART_BASE).as_usize());
+        uart.init();
+        SpinNoIrq::new(uart)
+    });
 }
 
 #[cfg(feature = "irq")]
@@ -51,8 +58,14 @@ impl ConsoleIf for ConsoleIfImpl {
         read_len
     }
 
-    #[cfg(feature = "irq")]
     fn irq_num() -> Option<usize> {
-        Some(crate::config::devices::UART_IRQ)
+        #[cfg(feature = "irq")]
+        {
+            Some(crate::config::devices::UART_IRQ)
+        }
+        #[cfg(not(feature = "irq"))]
+        {
+            None
+        }
     }
 }

@@ -844,6 +844,7 @@ dependencies = [
  "axplat-aarch64-peripherals 0.3.1-pre.6",
  "dw_apb_uart",
  "kspin",
+ "lazyinit",
  "log",
  "page_table_entry",
 ]
