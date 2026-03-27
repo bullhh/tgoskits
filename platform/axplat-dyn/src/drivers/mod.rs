@@ -16,6 +16,9 @@ use spin::Mutex;
 
 mod pci;
 
+#[cfg(target_arch = "aarch64")]
+mod soc;
+
 pub mod blk;
 
 const MAX_BLOCK_DEVICES: usize = 16;

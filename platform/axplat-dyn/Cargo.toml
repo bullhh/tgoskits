@@ -13,6 +13,7 @@ repository.workspace = true
 default = ["smp", "irq"]
 smp = ["axplat/smp"]
 irq = ["axplat/irq"]
+fp-simd = ["axcpu/fp-simd"]
 uspace = ["somehal/uspace"]
 hv = ["somehal/hv", "axcpu/arm-el2"]
 
@@ -37,3 +38,6 @@ rd-block = "0.1"
 rdrive = "0.20"
 somehal = "0.6"
 spin = "0.10"
+rdif-clk = "0.5"
+rk3568_clk = "0.1"
+sdmmc = { version = "0.1", default-features = false, features = ["pio"] }

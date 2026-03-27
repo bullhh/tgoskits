@@ -302,10 +302,10 @@ setup_phytiumpi() {
     # Set serial device only if specified
     if [ "$serial_specified" = true ]; then
         info "Setting serial device to: $serial_device"
-        run_cmd sed -i 's|^serial = "\${env:BOARD_COMM_UART}"|serial = "'"$serial_device"'"|g' tmp/configs/phytiumpi-runtime.toml
+        run_cmd sed -i 's|^serial = "\${env:BOARD_COMM_UART_DEV}"|serial = "'"$serial_device"'"|g' tmp/configs/phytiumpi-runtime.toml
     else
         # Remove serial line to keep it as environment variable
-        run_cmd sed -i '/^serial = "\${env:BOARD_COMM_UART}"/d' tmp/configs/phytiumpi-runtime.toml
+        run_cmd sed -i '/^serial = "\${env:BOARD_COMM_UART_DEV}"/d' tmp/configs/phytiumpi-runtime.toml
     fi
 
     info "Adding device tree file path to uboot config..."
@@ -421,10 +421,10 @@ setup_roc_rk3568_pc() {
     # Set serial device only if specified
     if [ "$serial_specified" = true ]; then
         info "Setting serial device to: $serial_device"
-        run_cmd sed -i 's|^serial = "\${env:BOARD_COMM_UART}"|serial = "'"$serial_device"'"|g' tmp/configs/roc-rk3568-pc-runtime.toml
+        run_cmd sed -i 's|^serial = "\${env:BOARD_COMM_UART_DEV}"|serial = "'"$serial_device"'"|g' tmp/configs/roc-rk3568-pc-runtime.toml
     else
         # Remove serial line to keep it as environment variable
-        run_cmd sed -i '/^serial = "\${env:BOARD_COMM_UART}"/d' tmp/configs/roc-rk3568-pc-runtime.toml
+        run_cmd sed -i '/^serial = "\${env:BOARD_COMM_UART_DEV}"/d' tmp/configs/roc-rk3568-pc-runtime.toml
     fi
 
     info "Adding device tree file path to uboot config..."

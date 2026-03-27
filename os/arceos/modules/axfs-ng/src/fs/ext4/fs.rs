@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use core::cell::OnceCell;
 
-use axdriver::AxBlockDevice;
+use axdriver::{AxBlockDevice, prelude::BlockDriverOps};
 use axfs_ng_vfs::{
     DirEntry, DirNode, Filesystem, FilesystemOps, Reference, StatFs, VfsResult, path::MAX_NAME_LEN,
 };
@@ -22,6 +22,15 @@ pub struct Ext4Filesystem {
 
 impl Ext4Filesystem {
     pub fn new(dev: AxBlockDevice) -> VfsResult<Filesystem> {
+        let mut dev = dev;
+
+        let ext4 = match lwext4_rust::Ext4Filesystem::new(Ext4Disk(dev), EXT4_CONFIG) {
+            Ok(ext4) => ext4,
+            Err(err) => {
+                error!("failed to mount ext4 rootfs: {err:?}");
+                return Err(into_vfs_err(err));
+            }
+        };
         let ext4 =
             lwext4_rust::Ext4Filesystem::new(Ext4Disk(dev), EXT4_CONFIG).map_err(into_vfs_err)?;
 

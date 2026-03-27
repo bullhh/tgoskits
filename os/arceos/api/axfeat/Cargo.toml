@@ -102,6 +102,7 @@ rtc = ["axhal/rtc", "axruntime/rtc"]
 bus-mmio = ["axdriver?/bus-mmio"]
 bus-pci = ["axdriver?/bus-pci"]
 driver-ramdisk = ["axdriver?/ramdisk", "axfs?/use-ramdisk"]
+driver-sdmmc-gpt = ["axdriver?/sdmmc-gpt"]
 driver-sdmmc = ["axdriver?/sdmmc"]
 driver-ixgbe = ["axdriver?/ixgbe"]
 driver-fxmac = ["axdriver?/fxmac"]                          # fxmac ethernet driver for PhytiumPi
