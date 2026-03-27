@@ -159,17 +159,16 @@ impl rd_block::IQueue for BlockQueue {
         }
     }
 
-    fn poll_request(
-        &mut self,
-        _request: rd_block::RequestId,
-    ) -> Result<(), rd_block::BlkError> {
+    fn poll_request(&mut self, _request: rd_block::RequestId) -> Result<(), rd_block::BlkError> {
         Ok(())
     }
 }
 
 fn map_sd_err_to_blk_err(err: sdmmc::err::SdError) -> rd_block::BlkError {
     match err {
-        sdmmc::err::SdError::Timeout | sdmmc::err::SdError::DataTimeout => rd_block::BlkError::Retry,
+        sdmmc::err::SdError::Timeout | sdmmc::err::SdError::DataTimeout => {
+            rd_block::BlkError::Retry
+        }
         sdmmc::err::SdError::NoCard | sdmmc::err::SdError::UnsupportedCard => {
             rd_block::BlkError::NotSupported
         }

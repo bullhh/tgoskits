@@ -31,8 +31,6 @@ impl Ext4Filesystem {
                 return Err(into_vfs_err(err));
             }
         };
-        let ext4 =
-            lwext4_rust::Ext4Filesystem::new(Ext4Disk(dev), EXT4_CONFIG).map_err(into_vfs_err)?;
 
         let fs = Arc::new(Self {
             inner: Mutex::new(ext4),

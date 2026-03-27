@@ -16,19 +16,20 @@ repository.workspace = true
 
 [features]
 default = []
-qemu = [
-    "axfeat/defplat",
-    "axfeat/bus-pci",
-
-    "axfeat/display",
-
-    "starry-kernel/input",
-    "starry-kernel/vsock",
-
-    # auxilary features
+common = [
+    # keep generic Starry runtime behavior across boot modes
     "axfeat/fs-ng-times",
     "starry-kernel/dev-log",
 ]
+qemu = [
+    "common",
+    "axfeat/defplat",
+    "axfeat/bus-pci",
+    "axfeat/display",
+    "starry-kernel/input",
+    "starry-kernel/vsock",
+]
+rk3568 = ["common", "axfeat/bus-mmio", "axfeat/driver-sdmmc"]
 smp = ["axfeat/smp", "axplat-riscv64-visionfive2?/smp"]
 
 vf2 = ["dep:axplat-riscv64-visionfive2", "axfeat/driver-sdmmc"]
@@ -36,7 +37,6 @@ vf2 = ["dep:axplat-riscv64-visionfive2", "axfeat/driver-sdmmc"]
 [[bin]]
 name = "starryos"
 path = "src/main.rs"
-required-features = ["qemu"]
 
 [dependencies]
 axfeat.workspace = true

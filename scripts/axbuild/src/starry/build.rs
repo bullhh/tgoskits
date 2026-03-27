@@ -142,12 +142,15 @@ fn patch_starry_cargo_config(
     request: &ResolvedStarryRequest,
 ) -> anyhow::Result<()> {
     let platform = default_platform_for_arch(&request.arch)?;
+    let static_defplat = uses_static_default_platform(&cargo.features);
 
     cargo.package = request.package.clone();
     cargo.target = request.target.clone();
-    cargo.features.push("qemu".to_string());
-    cargo.features.sort();
-    cargo.features.dedup();
+    if static_defplat {
+        cargo.features.push("qemu".to_string());
+        cargo.features.sort();
+        cargo.features.dedup();
+    }
 
     cargo
         .env
@@ -155,12 +158,37 @@ fn patch_starry_cargo_config(
     cargo
         .env
         .insert("AX_TARGET".to_string(), request.target.clone());
-    cargo
-        .env
-        .entry("AX_PLATFORM".to_string())
-        .or_insert_with(|| platform.to_string());
+    if static_defplat {
+        cargo
+            .env
+            .entry("AX_PLATFORM".to_string())
+            .or_insert_with(|| platform.to_string());
+    }
 
     Ok(())
+}
+
+fn uses_static_default_platform(features: &[String]) -> bool {
+    let has_defplat = features.iter().any(|feature| {
+        matches!(
+            feature.as_str(),
+            "defplat" | "axfeat/defplat" | "axstd/defplat"
+        )
+    });
+    let has_dynamic = features.iter().any(|feature| {
+        matches!(
+            feature.as_str(),
+            "plat-dyn" | "axfeat/plat-dyn" | "axstd/plat-dyn"
+        )
+    });
+    let has_custom = features.iter().any(|feature| {
+        matches!(
+            feature.as_str(),
+            "myplat" | "axfeat/myplat" | "axstd/myplat"
+        )
+    });
+
+    has_defplat && !has_dynamic && !has_custom
 }
 
 fn default_platform_for_arch(arch: &str) -> anyhow::Result<&'static str> {
@@ -251,7 +279,7 @@ mod tests {
         );
         let written = fs::read_to_string(path).unwrap();
         assert!(written.contains("features = [\"qemu\"]"));
-        assert!(written.contains("plat_dyn = true"));
+        assert!(!written.contains("plat_dyn = true"));
     }
 
     #[test]
@@ -290,7 +318,7 @@ HELLO = "world"
         );
         let build_info = StarryBuildInfo {
             env: HashMap::from([(String::from("CUSTOM"), String::from("1"))]),
-            features: vec!["net".to_string()],
+            features: vec!["net".to_string(), "axfeat/defplat".to_string()],
             log: LogLevel::Info,
             max_cpu_num: None,
             plat_dyn: false,
@@ -304,7 +332,14 @@ HELLO = "world"
 
         assert_eq!(cargo.package, STARRY_PACKAGE);
         assert_eq!(cargo.target, "aarch64-unknown-none-softfloat");
-        assert_eq!(cargo.features, vec!["net".to_string(), "qemu".to_string()]);
+        assert_eq!(
+            cargo.features,
+            vec![
+                "axfeat/defplat".to_string(),
+                "net".to_string(),
+                "qemu".to_string()
+            ]
+        );
         assert_eq!(
             cargo.env.get("AX_ARCH").map(String::as_str),
             Some("aarch64")
@@ -320,6 +355,39 @@ HELLO = "world"
         assert_eq!(cargo.env.get("AX_LOG").map(String::as_str), Some("info"));
         assert_eq!(cargo.env.get("CUSTOM").map(String::as_str), Some("1"));
         assert!(cargo.to_bin);
+    }
+
+    #[test]
+    fn patch_starry_cargo_config_skips_qemu_defaults_for_dynamic_platform_builds() {
+        let request = request(
+            PathBuf::from("/tmp/.build.toml"),
+            "aarch64",
+            "aarch64-unknown-none-softfloat",
+        );
+        let build_info = StarryBuildInfo {
+            env: HashMap::from([(String::from("CUSTOM"), String::from("1"))]),
+            features: vec!["rk3568".to_string(), "axfeat/plat-dyn".to_string()],
+            log: LogLevel::Info,
+            max_cpu_num: None,
+            plat_dyn: true,
+        };
+        let mut cargo = build_info.into_base_cargo_config_with_log(
+            STARRY_PACKAGE.to_string(),
+            request.target.clone(),
+            vec![],
+        );
+
+        patch_starry_cargo_config(&mut cargo, &request).unwrap();
+
+        assert!(cargo.features.contains(&"rk3568".to_string()));
+        assert!(cargo.features.contains(&"axfeat/plat-dyn".to_string()));
+        assert!(!cargo.features.contains(&"qemu".to_string()));
+        assert_eq!(cargo.env.get("AX_PLATFORM"), None);
+        assert_eq!(
+            cargo.env.get("AX_ARCH").map(String::as_str),
+            Some("aarch64")
+        );
+        assert_eq!(cargo.env.get("CUSTOM").map(String::as_str), Some("1"));
     }
 
     #[test]
@@ -424,6 +492,37 @@ CUSTOM = "1"
         assert!(cargo.features.contains(&"axfeat/defplat".to_string()));
         assert!(!cargo.features.contains(&"axfeat/plat-dyn".to_string()));
         assert!(cargo.args.iter().any(|arg| arg.contains("-Tlinker.x")));
+    }
+
+    #[test]
+    fn load_cargo_config_keeps_board_feature_for_rk3568_dynamic_builds() {
+        let root = tempdir().unwrap();
+        let path = root.path().join(".build-target.toml");
+        fs::write(
+            &path,
+            r#"
+log = "Info"
+plat_dyn = true
+features = ["rk3568"]
+
+[env]
+"#,
+        )
+        .unwrap();
+
+        let request = request(path, "aarch64", "aarch64-unknown-none-softfloat");
+        let cargo = load_cargo_config(&request).unwrap();
+
+        assert!(cargo.features.contains(&"rk3568".to_string()));
+        assert!(cargo.features.contains(&"axfeat/plat-dyn".to_string()));
+        assert!(!cargo.features.contains(&"qemu".to_string()));
+        assert_eq!(cargo.env.get("AX_PLATFORM"), None);
+        assert!(
+            cargo
+                .args
+                .iter()
+                .any(|arg| arg.contains("-Clink-arg=-Taxplat.x"))
+        );
     }
 
     #[test]

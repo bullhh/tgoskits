@@ -83,14 +83,16 @@ pub fn probe_all_devices() -> Vec<super::AxDeviceEnum> {
                         }
                         Ok(None) => {
                             warn!(
-                                "GPT detected on block device {}, but no partition named 'rootfs' was found; using raw device",
+                                "GPT detected on block device {}, but no partition named 'rootfs' \
+                                 was found; using raw device",
                                 raw.device_name()
                             );
                             devices.push(super::AxDeviceEnum::Block(Box::new(raw)));
                         }
                         Err(err) => {
                             warn!(
-                                "failed to inspect GPT partitions on block device {}; using raw device: {err}",
+                                "failed to inspect GPT partitions on block device {}; using raw \
+                                 device: {err}",
                                 raw.device_name()
                             );
                             devices.push(super::AxDeviceEnum::Block(Box::new(raw)));

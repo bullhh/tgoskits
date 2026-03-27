@@ -2,9 +2,10 @@ extern crate alloc;
 
 use axklib::mem::iomap;
 use rdif_clk::{ClockId, Interface};
-use rdrive::{DriverGeneric, KError, PlatformDevice, module_driver, probe::OnProbeError, register::FdtInfo};
-use rk3568_clk::CRU;
-use rk3568_clk::cru_clksel_con28_bits::*;
+use rdrive::{
+    DriverGeneric, KError, PlatformDevice, module_driver, probe::OnProbeError, register::FdtInfo,
+};
+use rk3568_clk::{CRU, cru_clksel_con28_bits::*};
 
 pub struct ClkDriver(CRU);
 

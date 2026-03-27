@@ -364,7 +364,7 @@ impl<R: TtyRead, W: TtyWrite> LineDiscipline<R, W> {
                 axtask::yield_now();
             }
         }
-        
+
         let set = match &self.processor {
             Processor::Manual(_) => None,
             Processor::External(set) => Some(set),
