@@ -77,3 +77,4 @@ RUN rustup component add rust-src llvm-tools rustfmt clippy \
 WORKDIR /workspace
 
 CMD ["/bin/bash"]
+# test
