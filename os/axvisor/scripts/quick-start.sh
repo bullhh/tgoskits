@@ -176,6 +176,8 @@ setup_qemu_aarch64() {
     run_cmd cp .github/workflows/qemu-aarch64.toml tmp/configs/qemu-aarch64-runtime.toml
 
     ROOTFS_PATH="$(pwd)/tmp/images/qemu_aarch64_linux/rootfs.img"
+    run_cmd sed -i 's|^  # "-drive",$|  "-drive",|g' tmp/configs/qemu-aarch64-runtime.toml
+    run_cmd sed -i 's|^  # "id=disk0,if=none,format=raw,file=|  "id=disk0,if=none,format=raw,file=|g' tmp/configs/qemu-aarch64-runtime.toml
     run_cmd sed -i 's|file=${workspaceFolder}/tmp/rootfs.img|file='"$ROOTFS_PATH"'|g' tmp/configs/qemu-aarch64-runtime.toml
     run_cmd sed -i '/success_regex = \[/,/\]/c\success_regex = []' tmp/configs/qemu-aarch64-runtime.toml
 
@@ -230,7 +232,9 @@ setup_qemu_riscv64() {
 
     info "Preparing QEMU config file..."
     run_cmd cp .github/workflows/qemu-riscv64.toml tmp/configs/qemu-riscv64-runtime.toml
-    run_cmd cp tmp/images/qemu_riscv64_arceos/rootfs.img tmp/rootfs.img
+
+    ROOTFS_PATH="$(pwd)/tmp/images/qemu_riscv64_arceos/rootfs.img"
+    run_cmd sed -i 's|file=${workspaceFolder}/tmp/rootfs.img|file='"$ROOTFS_PATH"'|g' tmp/configs/qemu-riscv64-runtime.toml
 
     info "=== QEMU RISC-V64 Preparation Complete ==="
 }
@@ -238,45 +242,9 @@ setup_qemu_riscv64() {
 run_qemu_riscv64_arceos() {
     info "=== Launching QEMU RISC-V64 ArceOS Guest ==="
     run_axvisor_qemu \
-        --build-config tmp/configs/qemu-riscv64.toml \
-        --qemu-config tmp/configs/qemu-riscv64-runtime.toml \
-        --vmconfigs tmp/configs/arceos-riscv64-qemu-smp1.toml
-}
-
-# ============================================================================
-# QEMU RISC-V64 Architecture Setup
-# ============================================================================
-
-setup_qemu_riscv64() {
-    info "=== QEMU RISC-V64 Preparation ==="
-
-    run_cmd mkdir -p tmp/{configs,images}
-
-    info "Downloading ArceOS image..."
-    run_cmd cargo axvisor image pull qemu_riscv64_arceos --output-dir tmp/images
-
-    info "Preparing board config file..."
-    run_cmd cp configs/board/qemu-riscv64.toml tmp/configs/
-
-    info "Preparing guest config file..."
-    run_cmd cp configs/vms/arceos-riscv64-qemu-smp1.toml tmp/configs/
-
-    run_cmd sed -i 's|^kernel_path = .*|kernel_path = "../images/qemu_riscv64_arceos/qemu-riscv64"|g' tmp/configs/arceos-riscv64-qemu-smp1.toml
-    run_cmd sed -i 's|^image_location = "fs"|image_location = "memory"|g' tmp/configs/arceos-riscv64-qemu-smp1.toml
-
-    info "Preparing QEMU config file..."
-    run_cmd cp .github/workflows/qemu-riscv64.toml tmp/configs/qemu-riscv64-runtime.toml
-    run_cmd cp tmp/images/qemu_riscv64_arceos/rootfs.img tmp/rootfs.img
-
-    info "=== QEMU RISC-V64 Preparation Complete ==="
-}
-
-run_qemu_riscv64_arceos() {
-    info "=== Launching QEMU RISC-V64 ArceOS Guest ==="
-    run_axvisor_qemu \
-        --build-config tmp/configs/qemu-riscv64.toml \
-        --qemu-config tmp/configs/qemu-riscv64-runtime.toml \
-        --vmconfigs tmp/configs/arceos-riscv64-qemu-smp1.toml
+        --config "$(pwd)/tmp/configs/qemu-riscv64.toml" \
+        --qemu-config "$(pwd)/tmp/configs/qemu-riscv64-runtime.toml" \
+        --vmconfigs "$(pwd)/tmp/configs/arceos-riscv64-qemu-smp1.toml"
 }
 
 # ============================================================================
