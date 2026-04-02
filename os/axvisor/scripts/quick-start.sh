@@ -556,9 +556,7 @@ setup_rdk_s100() {
     run_cmd cp configs/vms/linux-aarch64-s100-smp1.toml tmp/configs/
 
     run_cmd sed -i 's|^kernel_path = .*|kernel_path = "../images/'"${arceos_image}"'/rdk-s100p"|g' tmp/configs/arceos-aarch64-s100-smp1.toml
-    run_cmd sed -i 's|^dtb_path = .*|dtb_path = "../images/'"${linux_image}"'/rdk_s100p_guest.dtb"|g' tmp/configs/arceos-aarch64-s100-smp1.toml
     run_cmd sed -i 's|^kernel_path = .*|kernel_path = "../images/'"${linux_image}"'/rdk-s100p"|g' tmp/configs/linux-aarch64-s100-smp1.toml
-    run_cmd sed -i 's|^dtb_path = .*|dtb_path = "../images/'"${linux_image}"'/rdk_s100p_guest.dtb"|g' tmp/configs/linux-aarch64-s100-smp1.toml
 
     info "Preparing uboot config file..."
     run_cmd cp .github/workflows/uboot.toml tmp/configs/rdk-s100-runtime.toml
@@ -582,8 +580,17 @@ setup_rdk_s100() {
     fi
 
     info "Adding device tree file path to uboot config..."
-    DTB_PATH="$(pwd)/tmp/images/${linux_image}/rdk_s100p_host.dtb"
+    DTB_PATH="$(pwd)/tmp/images/${linux_image}/rdk-s100p-v1p0.dtb"
     run_cmd sed -i 's|^dtb_file = "\${env:BOARD_DTB}"|dtb_file = "'"$DTB_PATH"'"|g' tmp/configs/rdk-s100-runtime.toml
+
+    info "Adding uboot_cmd for A/B boot selection..."
+    {
+        echo ""
+        echo "uboot_cmd = ["
+        echo '  "run ab_select_cmd",'
+        echo '  "run avb_boot",'
+        echo "]"
+    } >> tmp/configs/rdk-s100-runtime.toml
 
     info "=== RDK S100P Board Preparation Complete ==="
     info "Baud rate has been set to 921600"
