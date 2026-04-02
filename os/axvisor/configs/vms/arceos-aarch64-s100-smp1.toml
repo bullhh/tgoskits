@@ -27,7 +27,7 @@ kernel_load_addr = 0x20_3008_0000
 kernel_path = "path/rdk-s100/Image"
 ## The file path of the device tree blob (DTB).
 dtb_load_addr = 0x20_3000_0000
-dtb_path = "path/rdk-s100/current_guest.dtb"
+#dtb_path = "path/rdk-s100/rdk-s100p-v1p0.dtb"
 # Memory regions with format (`base_paddr`, `size`, `flags`, `map_type`).
 # For `map_type`, 0 means `MAP_ALLOC`, 1 means `MAP_IDENTICAL`.
 memory_regions = [

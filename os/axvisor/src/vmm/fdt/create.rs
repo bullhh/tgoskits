@@ -274,6 +274,27 @@ fn add_memory_node(new_memory: &[VMMemoryRegion], new_fdt: &mut FdtWriter) {
     new_fdt.property_string("device_type", "memory").unwrap();
 }
 
+fn sanitize_bootargs(bootargs: &str) -> String {
+    const RAMDISK_BOOTARGS: [&str; 3] = ["root=/dev/ram0", "rdinit=/init", "rootwait"];
+
+    let rewritten = bootargs.replace(" ro ", " rw ");
+    let tokens = rewritten.split_whitespace().collect::<Vec<_>>();
+    let mut sanitized = Vec::with_capacity(tokens.len());
+    let mut index = 0;
+
+    while index < tokens.len() {
+        if tokens[index..].starts_with(&RAMDISK_BOOTARGS) {
+            index += RAMDISK_BOOTARGS.len();
+            continue;
+        }
+
+        sanitized.push(tokens[index]);
+        index += 1;
+    }
+
+    sanitized.join(" ")
+}
+
 pub fn update_fdt(fdt_src: NonNull<u8>, dtb_size: usize, vm: VMRef) {
     let mut new_fdt = FdtWriter::new().unwrap();
     let mut previous_node_level = 0;
@@ -313,7 +334,7 @@ pub fn update_fdt(fdt_src: NonNull<u8>, dtb_size: usize, vm: VMRef) {
                     );
                 } else if prop.name == "bootargs" {
                     let bootargs_str = prop.str();
-                    let modified_bootargs = bootargs_str.replace(" ro ", " rw ");
+                    let modified_bootargs = sanitize_bootargs(bootargs_str);
 
                     if modified_bootargs != bootargs_str {
                         info!(
