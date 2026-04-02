@@ -20,7 +20,10 @@ use core::ptr::NonNull;
 
 use super::vm_fdt::{FdtWriter, FdtWriterNode};
 use axaddrspace::GuestPhysAddr;
-use axvm::{VMMemoryRegion, config::AxVMCrateConfig};
+use axvm::{
+    VMMemoryRegion,
+    config::{AxVMCrateConfig, VmMemMappingType},
+};
 use fdt_parser::{Fdt, Node};
 use memory_addr::MemoryAddr;
 
@@ -257,9 +260,28 @@ fn need_cpu_node(phys_cpu_ids: &[usize], node: &Node, node_path: &str) -> bool {
 }
 
 /// Add memory node
-fn add_memory_node(new_memory: &[VMMemoryRegion], new_fdt: &mut FdtWriter) {
+fn add_memory_node(
+    new_memory: &[VMMemoryRegion],
+    crate_config: &AxVMCrateConfig,
+    new_fdt: &mut FdtWriter,
+) {
+    if new_memory.len() != crate_config.kernel.memory_regions.len() {
+        warn!(
+            "VM memory region count {} does not match config region count {}; filtering /memory by zipped order",
+            new_memory.len(),
+            crate_config.kernel.memory_regions.len()
+        );
+    }
+
     let mut new_value: Vec<u32> = Vec::new();
-    for mem in new_memory {
+    for (mem, cfg) in new_memory
+        .iter()
+        .zip(crate_config.kernel.memory_regions.iter())
+    {
+        if cfg.map_type == VmMemMappingType::MapReserved {
+            continue;
+        }
+
         let gpa = mem.gpa.as_usize() as u64;
         let size = mem.size() as u64;
         new_value.push((gpa >> 32) as u32);
@@ -295,7 +317,12 @@ fn sanitize_bootargs(bootargs: &str) -> String {
     sanitized.join(" ")
 }
 
-pub fn update_fdt(fdt_src: NonNull<u8>, dtb_size: usize, vm: VMRef) {
+pub fn update_fdt(
+    fdt_src: NonNull<u8>,
+    dtb_size: usize,
+    vm: VMRef,
+    crate_config: &AxVMCrateConfig,
+) {
     let mut new_fdt = FdtWriter::new().unwrap();
     let mut previous_node_level = 0;
     let mut node_stack: Vec<FdtWriterNode> = Vec::new();
@@ -370,9 +397,8 @@ pub fn update_fdt(fdt_src: NonNull<u8>, dtb_size: usize, vm: VMRef) {
         // add memory node
         if previous_node_level == 1 {
             let memory_regions = vm.memory_regions();
-            debug!("Adding memory node with regions: {memory_regions:?}");
             let memory_node = new_fdt.begin_node("memory").unwrap();
-            add_memory_node(&memory_regions, &mut new_fdt);
+            add_memory_node(&memory_regions, crate_config, &mut new_fdt);
             new_fdt.end_node(memory_node).unwrap();
         }
     }
