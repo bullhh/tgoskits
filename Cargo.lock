@@ -5413,9 +5413,9 @@ version = "0.1.4"
 
 [[package]]
 name = "ranges-ext"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7dbbaa030b3eec58088755e56d3acb775fc74f4726565eda8633a415bfc44e0"
+checksum = "2c6c330c2b88fcc0e7a0da8837f91f05e8d9b7cec679bb6d2091c9ae67a57b08"
 dependencies = [
  "heapless 0.9.2",
  "thiserror 2.0.18",
