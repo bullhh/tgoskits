@@ -331,12 +331,12 @@ mod tests {
                 url: "https://example.com/registry/v0.0.22.toml".to_string(),
             },
             IncludeEntry {
-                url: "https://example.com/registry/v0.0.23.toml".to_string(),
+                url: "https://example.com/registry/v0.0.25.toml".to_string(),
             },
         ];
 
         let include = preferred_include(&includes).unwrap();
-        assert_eq!(include.url, "https://example.com/registry/v0.0.23.toml");
+        assert_eq!(include.url, "https://example.com/registry/v0.0.25.toml");
     }
 
     #[test]
