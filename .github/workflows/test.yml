@@ -128,6 +128,52 @@ jobs:
       - name: Run axvisor x86_64 tests
         run: cargo axvisor test qemu --target x86_64
 
+  test_axvisor_uboot_board:
+    name: Test axvisor ${{ matrix.board }} ${{ matrix.guest }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - board: rdk-s100
+            guest: linux
+            uboot_config: .github/workflows/uboot-rdk-s100.toml
+          - board: rdk-s100
+            guest: arceos
+            uboot_config: .github/workflows/uboot-rdk-s100.toml
+    runs-on:
+      - self-hosted
+      - linux
+      - arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - run: rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test-axvisor-uboot-${{ matrix.board }}-${{ matrix.guest }}
+          cache-bin: false
+          save-if: ${{ github.event_name == 'push' }}
+
+      - name: Prepare board-specific test inputs
+        run: |
+          case "${{ matrix.board }}/${{ matrix.guest }}" in
+            rdk-s100/linux)
+              : "${BOARD_GUEST_LINUX_KERNEL_PATH:?BOARD_GUEST_LINUX_KERNEL_PATH must point to the S100 Linux guest kernel image on the runner}"
+              sed -i "s|^kernel_path = .*|kernel_path = \"${BOARD_GUEST_LINUX_KERNEL_PATH}\"|g" \
+                os/axvisor/configs/vms/linux-aarch64-s100-smp1.toml
+              ;;
+            rdk-s100/arceos)
+              : "${BOARD_GUEST_ARCEOS_KERNEL_PATH:?BOARD_GUEST_ARCEOS_KERNEL_PATH must point to the S100 ArceOS guest kernel image on the runner}"
+              sed -i "s|^kernel_path = .*|kernel_path = \"${BOARD_GUEST_ARCEOS_KERNEL_PATH}\"|g" \
+                os/axvisor/configs/vms/arceos-aarch64-s100-smp1.toml
+              ;;
+          esac
+
+      - name: Run axvisor uboot board tests
+        run: cargo axvisor test uboot --board ${{ matrix.board }} --guest ${{ matrix.guest }} --uboot-config ${{ matrix.uboot_config }}
+
   test_axvisor_board:
     name: Test axvisor ${{ matrix.test_group }}
     strategy:
