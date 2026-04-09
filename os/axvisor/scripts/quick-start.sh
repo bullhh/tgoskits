@@ -603,7 +603,15 @@ setup_rdk_s100() {
     run_cmd sed -i 's|^kernel_path = .*|kernel_path = "../images/'"${linux_image}"'/rdk-s100p"|g' tmp/configs/linux-aarch64-s100-smp1.toml
 
     info "Preparing uboot config file..."
-    run_cmd cp .github/workflows/uboot-rdk-s100.toml tmp/configs/rdk-s100-runtime.toml
+    local workspace_root
+    local uboot_template
+    workspace_root="$(cd ../.. && pwd)"
+    uboot_template="${workspace_root}/.github/workflows/uboot-rdk-s100.toml"
+    if [ ! -f "$uboot_template" ]; then
+        error "RDK S100P U-Boot config not found: $uboot_template"
+        exit 1
+    fi
+    run_cmd cp "$uboot_template" tmp/configs/rdk-s100-runtime.toml
     run_cmd sed -i '/success_regex = \[/,/\]/c\success_regex = []' tmp/configs/rdk-s100-runtime.toml
 
     if [ "$serial_specified" = true ]; then
