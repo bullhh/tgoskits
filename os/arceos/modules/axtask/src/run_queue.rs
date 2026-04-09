@@ -3,8 +3,6 @@ use alloc::sync::Weak;
 use alloc::{collections::VecDeque, sync::Arc};
 use core::mem::MaybeUninit;
 
-#[cfg(feature = "ipi")]
-use axhal::irq::{IPI_IRQ, IpiTarget, send_ipi};
 use axhal::percpu::this_cpu_id;
 use axsched::BaseScheduler;
 use kernel_guard::BaseGuard;
@@ -260,11 +258,6 @@ impl<G: BaseGuard> AxRunQueueRef<'_, G> {
                 if cpu_id == this_cpu_id() {
                     #[cfg(feature = "preempt")]
                     crate::current().set_preempt_pending(true);
-                } else {
-                    #[cfg(feature = "ipi")]
-                    {
-                        send_ipi(IPI_IRQ, IpiTarget::Other { cpu_id });
-                    }
                 }
             }
         }
