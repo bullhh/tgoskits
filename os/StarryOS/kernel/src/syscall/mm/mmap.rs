@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use ax_errno::{AxError, AxResult};
 use ax_fs::FileBackend;
 use ax_hal::paging::{MappingFlags, PageSize};
-use ax_memory_addr::{MemoryAddr, VirtAddr, VirtAddrRange, align_up_4k};
+use ax_memory_addr::{MemoryAddr, VirtAddr, VirtAddrRange, align_down_4k, align_up_4k};
 use ax_task::current;
 use linux_raw_sys::general::*;
 use starry_vm::{vm_load, vm_write_slice};
@@ -272,8 +272,10 @@ pub fn sys_mprotect(addr: usize, length: usize, prot: u32) -> AxResult<isize> {
 
     let curr = current();
     let mut aspace = curr.as_thread().proc_data.aspace.lock();
-    let length = align_up_4k(length);
-    let start_addr = VirtAddr::from(addr);
+    let start = align_down_4k(addr);
+    let end = align_up_4k(addr.checked_add(length).ok_or(AxError::InvalidInput)?);
+    let length = end.checked_sub(start).ok_or(AxError::InvalidInput)?;
+    let start_addr = VirtAddr::from(start);
     aspace.protect(start_addr, length, permission_flags.into())?;
 
     Ok(0)

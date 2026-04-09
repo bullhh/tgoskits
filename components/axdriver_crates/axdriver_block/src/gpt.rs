@@ -1,8 +1,8 @@
 extern crate alloc;
 
+use alloc::vec::Vec;
 use core::{fmt, ops::Range, str::FromStr};
 
-use alloc::vec::Vec;
 use ax_driver_base::{BaseDriverOps, DevError, DevResult, DeviceType};
 use log::{debug, info};
 

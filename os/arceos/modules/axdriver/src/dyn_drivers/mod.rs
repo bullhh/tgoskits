@@ -121,56 +121,58 @@ pub fn probe_all_devices() -> Vec<super::AxDeviceEnum> {
                                 GptPartitionDev::new(raw, range),
                             )));
                         }
-                        Ok(None) => {
-                            match list_partitions(&mut raw) {
-                                Ok(partitions) => {
-                                    let mut selected = None;
-                                    for partition in partitions {
-                                        match partition_has_ext4(&mut raw, &partition.range) {
-                                            Ok(true) => {
-                                                selected = Some(partition);
-                                                break;
-                                            }
-                                            Ok(false) => {}
-                                            Err(err) => {
-                                                warn!(
-                                                    "failed to inspect filesystem signature on partition '{}' of block device {}: {err}",
-                                                    partition.entry.name,
-                                                    raw.device_name()
-                                                );
-                                            }
+                        Ok(None) => match list_partitions(&mut raw) {
+                            Ok(partitions) => {
+                                let mut selected = None;
+                                for partition in partitions {
+                                    match partition_has_ext4(&mut raw, &partition.range) {
+                                        Ok(true) => {
+                                            selected = Some(partition);
+                                            break;
+                                        }
+                                        Ok(false) => {}
+                                        Err(err) => {
+                                            warn!(
+                                                "failed to inspect filesystem signature on \
+                                                 partition '{}' of block device {}: {err}",
+                                                partition.entry.name,
+                                                raw.device_name()
+                                            );
                                         }
                                     }
-
-                                    if let Some(partition) = selected {
-                                        let range = partition.range;
-                                        info!(
-                                            "using ext4 GPT partition '{}' on block device {}: lba {}..{}",
-                                            partition.entry.name,
-                                            raw.device_name(),
-                                            range.start,
-                                            range.end
-                                        );
-                                        devices.push(super::AxDeviceEnum::Block(Box::new(
-                                            GptPartitionDev::new(raw, range),
-                                        )));
-                                    } else {
-                                        warn!(
-                                            "GPT detected on block device {}, but no partition named 'rootfs' or ext4 partition was found; using raw device",
-                                            raw.device_name()
-                                        );
-                                        devices.push(super::AxDeviceEnum::Block(Box::new(raw)));
-                                    }
                                 }
-                                Err(err) => {
+
+                                if let Some(partition) = selected {
+                                    let range = partition.range;
                                     info!(
-                                        "failed to inspect GPT partitions on block device {}; using raw device: {err}",
+                                        "using ext4 GPT partition '{}' on block device {}: lba \
+                                         {}..{}",
+                                        partition.entry.name,
+                                        raw.device_name(),
+                                        range.start,
+                                        range.end
+                                    );
+                                    devices.push(super::AxDeviceEnum::Block(Box::new(
+                                        GptPartitionDev::new(raw, range),
+                                    )));
+                                } else {
+                                    warn!(
+                                        "GPT detected on block device {}, but no partition named \
+                                         'rootfs' or ext4 partition was found; using raw device",
                                         raw.device_name()
                                     );
                                     devices.push(super::AxDeviceEnum::Block(Box::new(raw)));
                                 }
                             }
-                        }
+                            Err(err) => {
+                                info!(
+                                    "failed to inspect GPT partitions on block device {}; using \
+                                     raw device: {err}",
+                                    raw.device_name()
+                                );
+                                devices.push(super::AxDeviceEnum::Block(Box::new(raw)));
+                            }
+                        },
                         Err(err) => {
                             warn!(
                                 "failed to inspect GPT partitions on block device {}; using raw \
