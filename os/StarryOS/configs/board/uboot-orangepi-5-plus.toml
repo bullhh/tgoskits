@@ -1,4 +1,4 @@
-# Runtime config for booting StarryOS on Orange Pi 5 Plus (RK3588) via U-Boot.
+# Runtime config for booting StarryOS on Orange Pi 5 Plus via U-Boot.
 # This file is consumed by ostool's U-Boot runner, not by cargo build itself.
 serial = "/dev/ttyUSB0"
 baud_rate = "1500000"
