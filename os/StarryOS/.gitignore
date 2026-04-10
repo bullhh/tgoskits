@@ -14,4 +14,3 @@
 *.swo
 /.cargo/.config-local.toml
 /tmp/
-

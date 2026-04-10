@@ -42,7 +42,7 @@ vf2 = ["common", "dep:axplat-riscv64-visionfive2", "ax-feat/driver-sdmmc"]
 [[bin]]
 name = "starryos"
 path = "src/main.rs"
-required-features = ["qemu"]
+required-features = ["common"]
 
 [[bin]]
 name = "xtask"
