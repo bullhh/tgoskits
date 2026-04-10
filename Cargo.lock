@@ -7526,6 +7526,7 @@ dependencies = [
  "anyhow",
  "ax-feat",
  "axbuild",
+ "axplat-dyn",
  "axplat-riscv64-visionfive2",
  "clap",
  "starry-kernel",
