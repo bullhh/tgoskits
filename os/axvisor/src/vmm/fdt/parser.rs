@@ -26,6 +26,8 @@ use crate::vmm::fdt::crate_guest_fdt_with_cache;
 #[cfg(not(target_arch = "riscv64"))]
 use crate::vmm::fdt::create::update_cpu_node;
 
+const PAGE_SIZE_4K: usize = 0x1000;
+
 pub fn get_host_fdt() -> &'static [u8] {
     const FDT_VALID_MAGIC: u32 = 0xd00d_feed;
     let bootarg: usize = dtb::get_bootarg();
@@ -80,6 +82,74 @@ fn is_covered_by_memory_region(gpa: usize, size: usize, region: &VmMemConfig) ->
     region.gpa <= gpa && region_end >= end
 }
 
+fn align_down_4k(value: usize) -> usize {
+    value & !(PAGE_SIZE_4K - 1)
+}
+
+fn align_up_4k(value: usize) -> usize {
+    value
+        .saturating_add(PAGE_SIZE_4K - 1)
+        .checked_div(PAGE_SIZE_4K)
+        .unwrap_or(usize::MAX / PAGE_SIZE_4K)
+        .saturating_mul(PAGE_SIZE_4K)
+}
+
+fn align_reserved_region_4k(gpa: usize, size: usize) -> Option<(usize, usize)> {
+    if size == 0 {
+        return None;
+    }
+
+    let aligned_gpa = align_down_4k(gpa);
+    let end = gpa.saturating_add(size);
+    let aligned_end = align_up_4k(end);
+    let aligned_size = aligned_end.saturating_sub(aligned_gpa);
+
+    (aligned_size > 0).then_some((aligned_gpa, aligned_size))
+}
+
+fn subtract_memory_region_overlap(
+    start: usize,
+    size: usize,
+    existing_regions: &[VmMemConfig],
+) -> Vec<(usize, usize)> {
+    let mut remaining = vec![(start, start.saturating_add(size))];
+    let mut overlaps = existing_regions.to_vec();
+    overlaps.sort_by_key(|region| region.gpa);
+
+    for region in overlaps {
+        let overlap_start = region.gpa;
+        let overlap_end = region.gpa.saturating_add(region.size);
+        let mut next_remaining = Vec::new();
+
+        for (seg_start, seg_end) in remaining {
+            if overlap_end <= seg_start || overlap_start >= seg_end {
+                next_remaining.push((seg_start, seg_end));
+                continue;
+            }
+
+            if seg_start < overlap_start {
+                next_remaining.push((seg_start, overlap_start.min(seg_end)));
+            }
+            if overlap_end < seg_end {
+                next_remaining.push((overlap_end.max(seg_start), seg_end));
+            }
+        }
+
+        remaining = next_remaining;
+        if remaining.is_empty() {
+            break;
+        }
+    }
+
+    remaining
+        .into_iter()
+        .filter_map(|(seg_start, seg_end)| {
+            let seg_size = seg_end.saturating_sub(seg_start);
+            (seg_size > 0).then_some((seg_start, seg_size))
+        })
+        .collect()
+}
+
 fn reserved_memory_regions(crate_cfg: &AxVMCrateConfig) -> impl Iterator<Item = &VmMemConfig> {
     crate_cfg
         .kernel
@@ -95,6 +165,17 @@ fn is_memory_like_compatible(node: &fdt_parser::Node<'_>) -> bool {
             || compat.contains("shmem")
             || compat.contains("sram")
     })
+}
+
+fn is_partition_like_node(node: &fdt_parser::Node<'_>, node_path: &str) -> bool {
+    if node
+        .compatibles()
+        .any(|compat| compat == "fixed-partitions")
+    {
+        return true;
+    }
+
+    node_path.contains("/partitions/")
 }
 
 fn should_skip_passthrough_node(
@@ -151,45 +232,56 @@ pub fn parse_reserved_memory_regions(crate_cfg: &mut AxVMCrateConfig, dtb: &[u8]
 
         if let Some(reg_iter) = node.reg() {
             for reg in reg_iter {
-                let gpa = reg.address as usize;
-                let size = reg.size.unwrap_or(0);
-                if size == 0 {
+                let original_gpa = reg.address as usize;
+                let original_size = reg.size.unwrap_or(0);
+                let Some((gpa, size)) = align_reserved_region_4k(original_gpa, original_size)
+                else {
+                    continue;
+                };
+
+                if gpa != original_gpa || size != original_size {
+                    debug!(
+                        "Aligning reserved-memory {} from [{:#x}~{:#x}] to [{:#x}~{:#x}]",
+                        node_path,
+                        original_gpa,
+                        original_gpa.saturating_add(original_size),
+                        gpa,
+                        gpa.saturating_add(size)
+                    );
+                }
+
+                let remaining_segments =
+                    subtract_memory_region_overlap(gpa, size, &crate_cfg.kernel.memory_regions);
+
+                if remaining_segments.is_empty() {
+                    debug!(
+                        "Skipping reserved-memory {} [{:#x}~{:#x}] because it is fully covered by existing memory_regions",
+                        node_path,
+                        gpa,
+                        gpa + size
+                    );
                     continue;
                 }
 
-                if let Some(existing) = crate_cfg
-                    .kernel
-                    .memory_regions
-                    .iter()
-                    .find(|region| overlaps_memory_region(gpa, size, region))
-                {
-                    if is_covered_by_memory_region(gpa, size, existing) {
-                        debug!(
-                            "Skipping reserved-memory {} [{:#x}~{:#x}] because it is already covered by {:?}",
-                            node_path,
-                            gpa,
-                            gpa + size,
-                            existing
-                        );
-                    } else {
-                        warn!(
-                            "Skipping reserved-memory {} [{:#x}~{:#x}] because it partially overlaps existing {:?}",
-                            node_path,
-                            gpa,
-                            gpa + size,
-                            existing
-                        );
-                    }
-                    continue;
+                if remaining_segments.len() != 1 || remaining_segments[0] != (gpa, size) {
+                    debug!(
+                        "Cropping reserved-memory {} [{:#x}~{:#x}] into {:?} to avoid overlaps",
+                        node_path,
+                        gpa,
+                        gpa + size,
+                        remaining_segments
+                    );
                 }
 
-                crate_cfg.kernel.memory_regions.push(VmMemConfig {
-                    gpa,
-                    size,
-                    flags: default_flags,
-                    map_type: VmMemMappingType::MapReserved,
-                });
-                added_count += 1;
+                for (seg_gpa, seg_size) in remaining_segments {
+                    crate_cfg.kernel.memory_regions.push(VmMemConfig {
+                        gpa: seg_gpa,
+                        size: seg_size,
+                        flags: default_flags,
+                        map_type: VmMemMappingType::MapReserved,
+                    });
+                    added_count += 1;
+                }
             }
         }
     }
@@ -199,6 +291,74 @@ pub fn parse_reserved_memory_regions(crate_cfg: &mut AxVMCrateConfig, dtb: &[u8]
             "Added {} reserved-memory region(s) from DTB into VM kernel memory_regions",
             added_count
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::align_reserved_region_4k;
+
+    #[test]
+    fn align_reserved_region_keeps_aligned_range() {
+        assert_eq!(
+            align_reserved_region_4k(0x1000, 0x2000),
+            Some((0x1000, 0x2000))
+        );
+    }
+
+    #[test]
+    fn align_reserved_region_expands_to_cover_unaligned_bounds() {
+        assert_eq!(
+            align_reserved_region_4k(0x1100, 0x2500),
+            Some((0x1000, 0x3000))
+        );
+    }
+
+    #[test]
+    fn align_reserved_region_rejects_zero_sized_range() {
+        assert_eq!(align_reserved_region_4k(0x1000, 0), None);
+    }
+
+    #[test]
+    fn subtract_memory_region_overlap_keeps_non_overlapping_range() {
+        let existing = vec![VmMemConfig {
+            gpa: 0x4000,
+            size: 0x1000,
+            flags: 0,
+            map_type: VmMemMappingType::MapReserved,
+        }];
+
+        assert_eq!(
+            subtract_memory_region_overlap(0x1000, 0x1000, &existing),
+            vec![(0x1000, 0x1000)]
+        );
+    }
+
+    #[test]
+    fn subtract_memory_region_overlap_splits_range_around_overlap() {
+        let existing = vec![VmMemConfig {
+            gpa: 0x3000,
+            size: 0x2000,
+            flags: 0,
+            map_type: VmMemMappingType::MapReserved,
+        }];
+
+        assert_eq!(
+            subtract_memory_region_overlap(0x1000, 0x6000, &existing),
+            vec![(0x1000, 0x2000), (0x5000, 0x2000)]
+        );
+    }
+
+    #[test]
+    fn subtract_memory_region_overlap_drops_fully_covered_range() {
+        let existing = vec![VmMemConfig {
+            gpa: 0x1000,
+            size: 0x4000,
+            flags: 0,
+            map_type: VmMemMappingType::MapReserved,
+        }];
+
+        assert!(subtract_memory_region_overlap(0x2000, 0x1000, &existing).is_empty());
     }
 }
 
@@ -411,6 +571,14 @@ pub fn parse_passthrough_devices_address(
                 || node.name().starts_with("memory")
                 || is_reserved_memory_path(&node_path)
             {
+                continue;
+            }
+
+            if is_partition_like_node(node, &node_path) {
+                debug!(
+                    "Skipping partition-like node {} from passthrough parsing",
+                    node_path
+                );
                 continue;
             }
 
