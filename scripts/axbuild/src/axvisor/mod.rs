@@ -254,8 +254,10 @@ impl Axvisor {
             println!("[{}/{}] axvisor board {}", index + 1, total, group.name);
 
             let result = async {
+                let prepared_vmconfigs =
+                    qemu_test::prepare_board_test_vmconfigs(&self.ctx, &group).await?;
                 let request = self.prepare_request(
-                    qemu_test::board_test_build_args(&group),
+                    qemu_test::board_test_build_args(&group, prepared_vmconfigs),
                     None,
                     None,
                     SnapshotPersistence::Discard,

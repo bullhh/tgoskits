@@ -12,6 +12,7 @@ use crate::{
         image::{config::ImageConfig, spec::ImageSpecRef, storage::Storage},
     },
     context::AxvisorCliArgs,
+    test_qemu::AxvisorBoardTestGroup,
 };
 
 pub const LINUX_AARCH64_IMAGE_SPEC: &str = "qemu_aarch64_linux";
@@ -108,6 +109,41 @@ pub(crate) async fn prepare_nimbos_x86_64_guest_vmconfig(
     Ok(ctx.workspace_root().join(NIMBOS_X86_64_VMCONFIG))
 }
 
+pub(crate) async fn prepare_board_test_vmconfigs(
+    ctx: &AxvisorContext,
+    group: &AxvisorBoardTestGroup,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let Some(memory_guest) = group.memory_guest else {
+        return Ok(group.vmconfigs.iter().map(PathBuf::from).collect());
+    };
+
+    let image_dir = pull_guest_image(ctx, memory_guest.image_spec).await?;
+    let kernel_path = image_dir.join(memory_guest.kernel_path_in_image);
+    ensure_guest_kernel_exists(&kernel_path, group.name)?;
+
+    let dtb_path = match memory_guest.dtb_path_in_image {
+        Some(path) => {
+            let resolved = image_dir.join(path);
+            ensure_guest_dtb_exists(&resolved, group.name)?;
+            Some(resolved)
+        }
+        None => None,
+    };
+
+    let workspace_root = ctx.workspace_root();
+    let generated_vmconfig = workspace_root.join(memory_guest.generated_vmconfig);
+    generate_vmconfig_with_guest_assets(
+        &workspace_root.join(memory_guest.template_vmconfig),
+        &generated_vmconfig,
+        &kernel_path,
+        dtb_path.as_deref(),
+        None,
+        None,
+    )?;
+
+    Ok(vec![generated_vmconfig])
+}
+
 pub(crate) fn apply_shell_autoinit_config(config: &mut QemuConfig, shell: &ShellAutoInitConfig) {
     config.success_regex = shell.success_regex.clone();
     config.fail_regex = shell.fail_regex.clone();
@@ -120,19 +156,51 @@ fn generate_linux_vmconfig(
     output_path: &Path,
     kernel_path: &Path,
 ) -> anyhow::Result<()> {
+    generate_vmconfig_with_guest_assets(template_path, output_path, kernel_path, None, None, None)
+}
+
+fn generate_vmconfig_with_guest_assets(
+    template_path: &Path,
+    output_path: &Path,
+    kernel_path: &Path,
+    dtb_path: Option<&Path>,
+    bios_path: Option<&Path>,
+    ramdisk_path: Option<&Path>,
+) -> anyhow::Result<()> {
     let mut value = read_toml(template_path)?;
-    value
+    let kernel = value
         .get_mut("kernel")
         .and_then(toml::Value::as_table_mut)
         .ok_or_else(|| {
             anyhow::anyhow!("missing `[kernel]` section in {}", template_path.display())
-        })?
-        .insert(
-            "kernel_path".to_string(),
-            toml::Value::String(kernel_path.display().to_string()),
-        );
+        })?;
+    kernel.insert(
+        "kernel_path".to_string(),
+        toml::Value::String(kernel_path.display().to_string()),
+    );
+    update_optional_guest_path(kernel, "dtb_path", dtb_path);
+    update_optional_guest_path(kernel, "bios_path", bios_path);
+    update_optional_guest_path(kernel, "ramdisk_path", ramdisk_path);
 
     write_toml(output_path, &value)
+}
+
+fn update_optional_guest_path(
+    kernel: &mut toml::map::Map<String, toml::Value>,
+    key: &str,
+    path: Option<&Path>,
+) {
+    match path {
+        Some(path) => {
+            kernel.insert(
+                key.to_string(),
+                toml::Value::String(path.display().to_string()),
+            );
+        }
+        None => {
+            kernel.remove(key);
+        }
+    }
 }
 
 fn copy_rootfs(rootfs_src: &Path, rootfs_dst: &Path) -> anyhow::Result<()> {
@@ -177,6 +245,14 @@ fn ensure_guest_rootfs_exists(rootfs_path: &Path, guest_name: &str) -> anyhow::R
         Ok(())
     } else {
         anyhow::bail!("{guest_name} rootfs not found at {}", rootfs_path.display());
+    }
+}
+
+fn ensure_guest_dtb_exists(dtb_path: &Path, guest_name: &str) -> anyhow::Result<()> {
+    if dtb_path.exists() {
+        Ok(())
+    } else {
+        anyhow::bail!("{guest_name} dtb not found at {}", dtb_path.display());
     }
 }
 
@@ -226,7 +302,8 @@ pub(crate) fn uboot_test_build_args(build_config: &str, vmconfig: &str) -> Axvis
 }
 
 pub(crate) fn board_test_build_args(
-    group: &crate::test_qemu::AxvisorBoardTestGroup,
+    group: &AxvisorBoardTestGroup,
+    vmconfigs: Vec<PathBuf>,
 ) -> AxvisorCliArgs {
     AxvisorCliArgs {
         config: Some(PathBuf::from(group.build_config)),
@@ -234,7 +311,7 @@ pub(crate) fn board_test_build_args(
         target: None,
         plat_dyn: None,
         debug: false,
-        vmconfigs: group.vmconfigs.iter().map(PathBuf::from).collect(),
+        vmconfigs,
     }
 }
 
@@ -283,6 +360,49 @@ entry_point = 1
         copy_rootfs(&src, &dst).unwrap();
 
         assert_eq!(fs::read(&dst).unwrap(), b"rootfs");
+    }
+
+    #[test]
+    fn generate_vmconfig_with_guest_assets_updates_optional_paths() {
+        let dir = tempdir().unwrap();
+        let template = dir.path().join("linux.toml");
+        let output = dir.path().join("out/generated.toml");
+        fs::write(
+            &template,
+            r#"
+[base]
+id = 2
+
+[kernel]
+kernel_path = "old"
+dtb_path = "old.dtb"
+bios_path = "old.bios"
+ramdisk_path = "old.ramdisk"
+"#,
+        )
+        .unwrap();
+
+        generate_vmconfig_with_guest_assets(
+            &template,
+            &output,
+            Path::new("/tmp/kernel.bin"),
+            Some(Path::new("/tmp/guest.dtb")),
+            None,
+            Some(Path::new("/tmp/initrd.img")),
+        )
+        .unwrap();
+
+        let value: toml::Value = toml::from_str(&fs::read_to_string(&output).unwrap()).unwrap();
+        assert_eq!(
+            value["kernel"]["kernel_path"].as_str(),
+            Some("/tmp/kernel.bin")
+        );
+        assert_eq!(value["kernel"]["dtb_path"].as_str(), Some("/tmp/guest.dtb"));
+        assert!(value["kernel"].get("bios_path").is_none());
+        assert_eq!(
+            value["kernel"]["ramdisk_path"].as_str(),
+            Some("/tmp/initrd.img")
+        );
     }
 
     #[test]
